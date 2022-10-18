@@ -198,7 +198,7 @@ bool PointcloudCameraPoser::triggerSensorCapture()
     poser_sensor_tf_.header.stamp = snapshot_cloud_->header.stamp;;
     snapshot_mutex_.unlock();
 
-    snapshot_cloud_->header.frame_id = snapshot_cloud_->header.frame_id + "_ip";
+    snapshot_cloud_->header.frame_id = poser_sensor_tf_.child_frame_id;
     poser_cloud_publisher_->publish(*snapshot_cloud_);
     // RCLCPP_INFO(kLogger, "Received PointCloud snapshot: frame_id: %s", snapshot_cloud_->header.frame_id.c_str());
   }

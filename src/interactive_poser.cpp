@@ -96,7 +96,9 @@ InteractivePoserNode::InteractivePoserNode(const rclcpp::NodeOptions& options)
   // Wait a little bit to give TF time to update.
   std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
-  auto cam_poser = std::make_unique<PointcloudCameraPoser>("/scene_camera/depth/color/points", "not used");
+  std::string topic = "/scene_camera/depth/color/points";
+  std::string ign_topic = "/scene_camera/points";
+  auto cam_poser = std::make_unique<PointcloudCameraPoser>(topic, "not used");
   auto success = cam_poser->init("scene_camera", transform_buffer, node_, server_);
   cam_poser->initializeMarker();
   cam_poser->initializeMarkerMenu(menu_handler_);
@@ -194,6 +196,7 @@ void InteractivePoserNode::onCalibratePose(const std::shared_ptr<GoalHandleCalib
       if("scene_camera_mount_link" == calibration_pose.child_frame_id)
       {
         target_poser_name = p->getName();
+        p->triggerSensorCapture();
         RCLCPP_WARN(kLogger, "Adding approval menu: %s", p->getName().c_str());
         approve_menu = menu_handler_.insert( "Approve Action",
         [this, &user_approval](const InteractiveMarkerFeedback::ConstSharedPtr msg) 
@@ -273,7 +276,7 @@ void InteractivePoserNode::processFeedback(
   InteractiveMarker int_marker;
   server_->get(feedback->marker_name, int_marker);
   active_posers[0]->setPoserMarker(int_marker);// keep our internal copy up to date.
-  
+
   double roll, pitch, yaw;
   tf2::Matrix3x3(tmp.getRotation()).getRPY(roll, pitch, yaw);
 
