@@ -19,6 +19,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(robot_calibration_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_eigen REQUIRED)
@@ -31,6 +32,7 @@ find_package(yaml-cpp REQUIRED)
 set(THIS_PACKAGE_INCLUDE_DEPENDS
     ament_index_cpp
     rclcpp
+    robot_calibration_msgs
     sensor_msgs
     tf2
     tf2_eigen
@@ -44,7 +46,9 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
 # ----------------------------------
 add_library(interactive_poser_lib SHARED 
   src/interactive_poser.cpp
+  src/poser.cpp
   src/camera_poser.cpp
+  src/pointcloud_camera_poser.cpp
   # src/joint_pose_from_yaml.cpp
 )
 target_include_directories(interactive_poser_lib

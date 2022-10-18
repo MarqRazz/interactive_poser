@@ -36,7 +36,7 @@
 #pragma once
 
 #include <rclcpp/rclcpp.hpp>
-#include <rclcpp_action/rclcpp_action.hpp>
+#include <rclcpp_action/create_server.hpp>
 
 #include "interactive_markers/interactive_marker_server.hpp"
 #include "interactive_markers/menu_handler.hpp"
@@ -52,8 +52,19 @@
 #include "visualization_msgs/msg/marker.hpp"
 
 #include <interactive_poser/camera_poser.hpp>
+#include <interactive_poser/poser.hpp>
+#include <interactive_poser/pointcloud_camera_poser.hpp>
+
+#include <robot_calibration_msgs/action/calibrate_pose.hpp>
 
 #include <map>
+
+namespace
+{
+using CalibratePose = robot_calibration_msgs::action::CalibratePose;
+using GoalHandleCalibratePose = rclcpp_action::ServerGoalHandle<CalibratePose>;
+using namespace visualization_msgs::msg;
+}  // namespace
 
 namespace interactive_poser
 {
@@ -85,23 +96,93 @@ public:
   rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_node_base_interface();
 
 private:
+  /**
+   * @brief Callback function called by do_objective_server_ when a CalibratePose action goal request is received.
+   * @details Sets @ref has_active_action_goal_ = true when the goal request is accepted.
+   *
+   * @param uuid Goal UUID (ignored since only one goal request will be executed at a time).
+   * @param goal Goal message
+   * @return Returns rclcpp_action::GoalResponse::REJECT if the goal message's predefined_objective_name field is empty,
+   * or if ObjectiveServerNode was already executing a CalibratePose goal.
+   * Returns rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE otherwise.
+   */
+  rclcpp_action::GoalResponse onGoalCalibratePose(const rclcpp_action::GoalUUID& uuid,
+                                                const std::shared_ptr<const CalibratePose::Goal> goal);
+
+  /**
+   * @brief Callback function called by do_objective_server_ when a CalibratePose action cancellation request is received.
+   * @details This calls ObjectiveServer::haltTree() on objective_server_.
+   *
+   * @param goal_handle Goal handle to cancel (ignored since only one goal request will be executed at a time)
+   * @return Returns rclcpp_action::CancelResponse::REJECT if the behavior tree in objective_server_ is not currently
+   * running, since there is nothing to cancel in that case. Otherwise, returns rclcpp_action::CancelResponse::ACCEPT.
+   */
+  rclcpp_action::CancelResponse onCancelCalibratePose(const std::shared_ptr<GoalHandleCalibratePose> goal_handle);
+
+  /**
+   * @brief Callback function called by do_objective_server_ when starting to execute a CalibratePose action goal.
+   * @details Joins any existing do_objective_thread_ and replaces it with a new thread that will run
+   * ObjectiveServerNode::onCalibratePose.
+   *
+   * @param goal_handle Goal handle to execute.
+   */
+  void onAcceptedCalibratePose(const std::shared_ptr<GoalHandleCalibratePose> goal_handle);
+
+  /**
+   * @brief Execution function for CalibratePose action goals.
+   * @details We run this function in a separate thread that is stored in do_objective_thread_.
+   *
+   * This function does the work to create and tick the behavior tree associated with the Objective:
+   * - Loads XML text associated with the named Objective in the CalibratePose goal message.
+   * - Creates a new behavior tree from this XML text.
+   * - Runs the tree until it finishes or an error result is received.
+   *
+   * The CalibratePose action goal_handle will be aborted if:
+   * - Retrieval of XML text for the specified Objective does not succeed.
+   * - The behavior tree cannot be created from the XML text.
+   * - The behavior tree is cancelled before it completed.
+   * - The behavior tree returns an unexpected error state.
+   * - The behavior tree finishes without returning BT::NodeStatus::SUCCESS.
+   *
+   * Otherwise, the CalibratePose action goal_handle will succeed.
+   *
+   * has_active_action_goal_ will be set to false when this function completes.
+   *
+   * @param goal_handle CalibratePose action goal_handle to execute
+   */
+  void onCalibratePose(const std::shared_ptr<GoalHandleCalibratePose> goal_handle);
+
   void frameCallback();
 
   void processFeedback(
   const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr & feedback);
+
+  bool approveActionMenuCallback( const visualization_msgs::msg::InteractiveMarkerFeedback::ConstSharedPtr feedback);
 
   /**
    * @brief RCLCPP node for InteractivePoserNode
    */
   std::shared_ptr<rclcpp::Node> node_;
 
-  std::unique_ptr<interactive_markers::InteractiveMarkerServer> server_;
+  std::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
   interactive_markers::MenuHandler menu_handler_;
 
-  std::unique_ptr<CameraPoser> scene_cam;
+  std::shared_ptr<rclcpp_action::Server<CalibratePose>> calibrate_pose_server_;
+
+  std::vector<std::unique_ptr<Poser>> active_posers;
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::TimerBase::SharedPtr frame_timer_;
+
+  /**
+   * @brief Set to true while a CalibratePose action goal has been accepted and is in progress.
+   */
+  std::atomic_bool has_active_action_goal_{ false };
+
+  /**
+   * @brief The @ref onCalibratePose function runs within this thread.
+   */
+  std::thread calibrate_pose_thread_;
 
   // std::map<std::string, geometry_msgs::msg::TransformStamped> frames_to_pub;
   // std::map<std::string, geometry_msgs::msg::TransformStamped> frames_to_sub;

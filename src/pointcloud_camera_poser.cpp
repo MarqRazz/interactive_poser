@@ -34,23 +34,36 @@
 
 /* Author: Marq Rasmussen. */
 
-#include <interactive_poser/camera_poser.hpp>
+#include <interactive_poser/pointcloud_camera_poser.hpp>
 
 namespace
 {
 constexpr auto kNodeName = "interactive_poser_node";
 const auto kLogger = rclcpp::get_logger(kNodeName);
+
+using namespace visualization_msgs::msg;
 }
 
 namespace interactive_poser
 {
-CameraPoser::CameraPoser(std::shared_ptr<rclcpp::Node> node, 
-                        const std::shared_ptr<tf2_ros::Buffer> transform_buffer, 
-                        std::string topic_name, std::string poser_frame) 
-  : node_(node)
-  , transform_buffer_(transform_buffer)
+PointcloudCameraPoser::PointcloudCameraPoser(std::string topic_name, std::string poser_frame)
+  : pointcloud_topic_(topic_name)
 {
-  callback_group_ = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+}
+
+bool PointcloudCameraPoser::init(const std::string& name,
+                   std::shared_ptr<tf2_ros::Buffer> buffer,
+                   rclcpp::Node::SharedPtr node,
+                   std::shared_ptr<interactive_markers::InteractiveMarkerServer> int_marker_server)
+{
+  if (!Poser::init(name, buffer, node, int_marker_server))
+  {
+    return false;
+  }
+
+  clock_ = node->get_clock();
+
+  callback_group_ = node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   rclcpp::SubscriptionOptions options;
   options.callback_group = callback_group_;  
 
@@ -58,33 +71,37 @@ CameraPoser::CameraPoser(std::shared_ptr<rclcpp::Node> node,
   world_frame_ = "base_link";
   std::string camera_name = "scene_camera";
   camera_base_ = camera_name + "_mount_link";
-  std::string cloud_topic = camera_name + "/points";
+  // std::string cloud_topic = camera_name + "/points";
 
-  RCLCPP_INFO(kLogger, "Subscribing to PointCloud %s", cloud_topic.c_str());
-  cloud_subscriber_ = node_->create_subscription<PointCloud2>(
-        cloud_topic, rclcpp::QoS(1).reliable().keep_last(1), 
+  RCLCPP_INFO(kLogger, "Subscribing to PointCloud %s", pointcloud_topic_.c_str());
+  cloud_subscriber_ = node->create_subscription<PointCloud2>(
+        pointcloud_topic_, rclcpp::QoS(1).reliable().keep_last(1), 
         [this](const sensor_msgs::msg::PointCloud2::SharedPtr camera_point_cloud) {
           cloudCB(camera_point_cloud);
         },
         options);
-  pub_ = node_->create_publisher<PointCloud2>("/cloud_snapshot", rclcpp::SensorDataQoS().reliable());
+  poser_cloud_publisher_ = node->create_publisher<PointCloud2>(pointcloud_topic_ + "_ip", rclcpp::SensorDataQoS().reliable());
 
-  // std::this_thread::sleep_for( std::chrono::milliseconds(2000) );
+  // TODO implement timeout
   received_cloud_ = false;
+  rclcpp::Rate r {std::chrono::milliseconds(100)};
+  while(!received_cloud_)
+  {
+    rclcpp::spin_some(node);
+    r.sleep();
+  }
 
-  // captureCloud();
-
+  return true;
 }
 
-void CameraPoser::initializeFrames()
+void PointcloudCameraPoser::initializeFrames()
 {
   // Check that transform is possible. Fail without transforming if not possible.
   if (!transform_buffer_->canTransform(world_frame_, camera_base_, latest_cloud_->header.stamp))
   {
     RCLCPP_ERROR(kLogger, "Failed to lookup Camera Sensor frame: %s to imitate", camera_base_.c_str());
   }
-  // Transform is confirmed possible, get the transform and transform the point cloud.
-  target_camera_tf =
+  initial_poser_tf_ =
       transform_buffer_->lookupTransform(world_frame_, camera_base_, latest_cloud_->header.stamp);
 
   // Check that transform is possible. Fail without transforming if not possible.
@@ -92,32 +109,33 @@ void CameraPoser::initializeFrames()
   {
     RCLCPP_ERROR(kLogger, "Failed to lookup Camera Sensor frame: %s to imitate", latest_cloud_->header.frame_id.c_str());
   }
-  // Transform is confirmed possible, get the transform and transform the point cloud.
-  camera_base_to_sensor_tf =
+  initial_target_to_sensor_tf_ =
       transform_buffer_->lookupTransform(camera_base_, latest_cloud_->header.frame_id, latest_cloud_->header.stamp);
 
   RCLCPP_INFO(kLogger, "Setting up poser frames");
-  poser_tf = target_camera_tf; // initialize the poser frame in the same location as the target_camera
-  poser_tf.set__child_frame_id(camera_base_ + "_ip");
-  poser_sensor_tf = camera_base_to_sensor_tf; // initialize the poser frame in the same location as the target_sensor
-  poser_sensor_tf.set__child_frame_id(latest_cloud_->header.frame_id + "_ip");
-  poser_sensor_tf.header.frame_id = camera_base_ + "_ip";
+  poser_tf_ = initial_poser_tf_; // initialize the poser frame in the same location as the target_camera
+  poser_tf_.set__child_frame_id(camera_base_ + "_ip");
+  poser_sensor_tf_ = initial_target_to_sensor_tf_; // initialize the poser frame in the same location as the target_sensor
+  poser_sensor_tf_.set__child_frame_id(latest_cloud_->header.frame_id + "_ip");
+  poser_sensor_tf_.header.frame_id = camera_base_ + "_ip";
+
+  // initializeMarker();
 }
 
-void CameraPoser::initializeMarker()
+void PointcloudCameraPoser::initializeMarker()
 {
-  poser_marker_.header.frame_id = "base_link";
-  poser_marker_.pose.position.x = poser_tf.transform.translation.x;
-  poser_marker_.pose.position.y = poser_tf.transform.translation.y;
-  poser_marker_.pose.position.z = poser_tf.transform.translation.z;
-  poser_marker_.pose.orientation.x = poser_tf.transform.rotation.x;
-  poser_marker_.pose.orientation.y = poser_tf.transform.rotation.y;
-  poser_marker_.pose.orientation.z = poser_tf.transform.rotation.z;
-  poser_marker_.pose.orientation.w = poser_tf.transform.rotation.w;
+  poser_marker_.header.frame_id = poser_tf_.header.frame_id;
+  poser_marker_.pose.position.x = poser_tf_.transform.translation.x;
+  poser_marker_.pose.position.y = poser_tf_.transform.translation.y;
+  poser_marker_.pose.position.z = poser_tf_.transform.translation.z;
+  poser_marker_.pose.orientation.x = poser_tf_.transform.rotation.x;
+  poser_marker_.pose.orientation.y = poser_tf_.transform.rotation.y;
+  poser_marker_.pose.orientation.z = poser_tf_.transform.rotation.z;
+  poser_marker_.pose.orientation.w = poser_tf_.transform.rotation.w;
   poser_marker_.scale = 0.1;
 
-  poser_marker_.name = "scene_camera_poser";
-  poser_marker_.description = "Posable Camera Marker";
+  poser_marker_.name = this->getName();
+  poser_marker_.description = this->getName() + " Interactive Marker";
 
   visualization_msgs::msg::Marker marker;
   marker.type = visualization_msgs::msg::Marker::CUBE;
@@ -128,48 +146,28 @@ void CameraPoser::initializeMarker()
   marker.color.g = 0.5;
   marker.color.b = 0.5;
   marker.color.a = 1.0;
+  marker.pose.position.z = 0.01; // move the marker half the z scale to put the origin at the base of the cube
 
   visualization_msgs::msg::InteractiveMarkerControl control_base;
   control_base.always_visible = true;
   control_base.markers.push_back(marker);
-  control_base.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MOVE_ROTATE_3D;
+  control_base.name = this->getName() + "_control";
+  control_base.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MENU;
   poser_marker_.controls.push_back(control_base);
-
-  visualization_msgs::msg::InteractiveMarkerControl control;
-  tf2::Quaternion orientation(1.0, 0.0, 0.0, 1.0);
-  orientation.normalize();
-  control.orientation = tf2::toMsg(orientation);
-  control.name = "rotate_x";
-  control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::ROTATE_AXIS;
-  poser_marker_.controls.push_back(control);
-  control.name = "move_x";
-  control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MOVE_AXIS;
-  poser_marker_.controls.push_back(control);
-
-  orientation = tf2::Quaternion(0.0, 1.0, 0.0, 1.0);
-  orientation.normalize();
-  control.orientation = tf2::toMsg(orientation);
-  control.name = "rotate_z";
-  control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::ROTATE_AXIS;
-  poser_marker_.controls.push_back(control);
-  control.name = "move_z";
-  control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MOVE_AXIS;
-  poser_marker_.controls.push_back(control);
-
-  orientation = tf2::Quaternion(0.0, 0.0, 1.0, 1.0);
-  orientation.normalize();
-  control.orientation = tf2::toMsg(orientation);
-  control.name = "rotate_y";
-  control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::ROTATE_AXIS;
-  poser_marker_.controls.push_back(control);
-  control.name = "move_y";
-  control.interaction_mode = visualization_msgs::msg::InteractiveMarkerControl::MOVE_AXIS;
-  poser_marker_.controls.push_back(control);
-  
-
 }
 
-void CameraPoser::cloudCB (const PointCloud2::SharedPtr cloud_msg)
+void PointcloudCameraPoser::initializeMarkerMenu(interactive_markers::MenuHandler& menu_handler)
+{
+  Poser::initializeMarkerMenu(menu_handler);
+
+  // how do we tell the action server that the user is done estimating the pose?
+  // menu_handler.insert( "Action Complete",
+  //   [this](const InteractiveMarkerFeedback::ConstSharedPtr msg) 
+  //   { estimateComplete(); 
+  //   });
+}
+
+void PointcloudCameraPoser::cloudCB (const PointCloud2::SharedPtr cloud_msg)
 {
   if(snapshot_mutex_.try_lock())
   {
@@ -184,25 +182,36 @@ void CameraPoser::cloudCB (const PointCloud2::SharedPtr cloud_msg)
   }
 }
 
-void CameraPoser::captureCloud()
+bool PointcloudCameraPoser::triggerSensorCapture()
 {
   if(!received_cloud_)
   {
     RCLCPP_WARN(kLogger, "No PointCloud yet");
-    return;
+    return false;
   }
 
   if(snapshot_mutex_.try_lock())
   {
     snapshot_cloud_ = latest_cloud_;
     //update the transform timestamp
-    poser_tf.header.stamp = snapshot_cloud_->header.stamp;
-    poser_sensor_tf.header.stamp = snapshot_cloud_->header.stamp;;
+    poser_tf_.header.stamp = snapshot_cloud_->header.stamp;
+    poser_sensor_tf_.header.stamp = snapshot_cloud_->header.stamp;;
     snapshot_mutex_.unlock();
 
     snapshot_cloud_->header.frame_id = snapshot_cloud_->header.frame_id + "_ip";
-    pub_->publish(*snapshot_cloud_);
+    poser_cloud_publisher_->publish(*snapshot_cloud_);
     // RCLCPP_INFO(kLogger, "Received PointCloud snapshot: frame_id: %s", snapshot_cloud_->header.frame_id.c_str());
   }
+  return true;
+}
+
+std::vector<geometry_msgs::msg::TransformStamped> PointcloudCameraPoser::getPoserFrames()
+{
+  return {poser_tf_, poser_sensor_tf_};
+}
+
+void PointcloudCameraPoser::setPoserFrame(geometry_msgs::msg::TransformStamped& tf_update)
+{
+  poser_tf_.transform = tf_update.transform;
 }
 }  // namespace interactive_poser
