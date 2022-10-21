@@ -118,8 +118,9 @@ InteractivePoserNode::InteractivePoserNode(const rclcpp::NodeOptions& options)
   frame_timer_ = node_->create_wall_timer(std::chrono::milliseconds(100),
                                           [this]() { return frameCallback(); }); 
 
-  rclcpp::Parameter simTime( "use_sim_time", rclcpp::ParameterValue( true ) );
-  node_->set_parameter( simTime );
+  // TODO make this configurable
+  // rclcpp::Parameter simTime( "use_sim_time", rclcpp::ParameterValue( true ) );
+  // node_->set_parameter( simTime );
 }
 
 rclcpp::node_interfaces::NodeBaseInterface::SharedPtr InteractivePoserNode::get_node_base_interface()

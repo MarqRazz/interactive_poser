@@ -73,9 +73,11 @@ bool PointcloudCameraPoser::init(const std::string& name,
   camera_base_ = camera_name + "_mount_link";
   // std::string cloud_topic = camera_name + "/points";
 
+  // Fix the subscriber to support hardware: rclcpp::SensorDataQoS()
+  // this is required by Gazebo: rclcpp::QoS(1).reliable()
   RCLCPP_INFO(kLogger, "Subscribing to PointCloud %s", pointcloud_topic_.c_str());
   cloud_subscriber_ = node->create_subscription<PointCloud2>(
-        pointcloud_topic_, rclcpp::QoS(1).reliable().keep_last(1), 
+        pointcloud_topic_, rclcpp::SensorDataQoS().keep_last(1), 
         [this](const sensor_msgs::msg::PointCloud2::SharedPtr camera_point_cloud) {
           cloudCB(camera_point_cloud);
         },
