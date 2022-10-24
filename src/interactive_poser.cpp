@@ -281,7 +281,7 @@ void InteractivePoserNode::processFeedback(
   double roll, pitch, yaw;
   tf2::Matrix3x3(tmp.getRotation()).getRPY(roll, pitch, yaw);
 
-  RCLCPP_INFO(kLogger, "\ncamera_pose:\n\tx: %f \n\ty: %f \n\tz: %f \n\troll: %f \n\tpitch: %f \n\tyaw: %f", // "xyz=: %f %f %f , rpy=: %f %f %f",
+  RCLCPP_INFO(kLogger, "\ncamera_pose:\n  x: %f\n  y: %f\n  z: %f\n  roll: %f\n  pitch: %f\n  yaw: %f", // "xyz=: %f %f %f , rpy=: %f %f %f",
            tmp.getOrigin().getX(), tmp.getOrigin().getY(), tmp.getOrigin().getZ(),
            roll, pitch, yaw);
   // RCLCPP_WARN(kLogger, "Event type: %i", feedback->event_type);
