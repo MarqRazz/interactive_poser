@@ -87,7 +87,7 @@ bool PointcloudCameraPoser::init(const std::string& name,
   // TODO implement timeout
   received_cloud_ = false;
   rclcpp::Rate r {std::chrono::milliseconds(100)};
-  while(!received_cloud_)
+  while(!received_cloud_ && rclcpp::ok())
   {
     rclcpp::spin_some(node);
     r.sleep();
