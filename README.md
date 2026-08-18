@@ -199,7 +199,7 @@ bounds double as a sanity threshold, so the tool cannot emit an absurd offset.
 
 Save from the marker menu or `ros2 service call /interactive_poser/save
 std_srvs/srv/Trigger`. Saves are timestamped
-(`your_calibration_20260818T140413Z.yaml`) and never overwrite the input, so
+(`calibration_20260818T140413Z.yaml`) and never overwrite the input, so
 adopting a result is a deliberate copy. Reload the cell against the new file to
 apply it. Restart `robot_state_publisher` and `move_group`; the driver and
 controllers do not need restarting, because no arm joint changed.

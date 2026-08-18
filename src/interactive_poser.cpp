@@ -1211,7 +1211,10 @@ bool InteractivePoser::saveCalibration(std::string & message)
                                        : std::filesystem::path{params_.output_directory};
     std::error_code ec;
     std::filesystem::create_directories(dir, ec);
-    path = dir / (input.stem().string() + "_" + fileStamp() + input.extension().string());
+    // Fixed stem, not the input's. Deriving it produced names like
+    // default_calibration_<stamp>.yaml, and a measured calibration is the one
+    // thing it is not. Which cell it belongs to is the directory's job.
+    path = dir / ("calibration_" + fileStamp() + input.extension().string());
   }
   YAML::Node cal = root["calibration"];
   cal["captured"] = isoNow();

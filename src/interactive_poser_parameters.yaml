@@ -23,9 +23,9 @@ interactive_poser:
     type: bool
     default_value: true
     description: >
-      Save to <stem>_<UTC timestamp>.yaml beside the input rather than over it,
-      so a session can never destroy a file already in the workspace. Promoting
-      a result is then a deliberate copy over the cell's own file. Set false to
+      Save to calibration_<UTC timestamp>.yaml rather than over the input, so a
+      session can never destroy a file already in the workspace. Promoting a
+      result is then a deliberate copy over the cell's own file. Set false to
       write the input path in place.
 
   output_directory:
