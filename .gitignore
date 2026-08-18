@@ -2,3 +2,7 @@
 # already has a robot description, so a compose file that mounts a cell into
 # *this* repo has the dependency backwards.
 /docker/
+
+# Editor state. browse.vc.db is a multi-hundred-megabyte IntelliSense cache that
+# GitHub rejects outright, so this is not merely tidiness.
+/.vscode/

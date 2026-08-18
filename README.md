@@ -126,6 +126,17 @@ ros2 launch interactive_poser calibrate.launch.xml \
      calibration_file:=/path/to/your_calibration.yaml
 ```
 
+A cell package is a better home for that path than your shell history. Wrap this
+launch in one of your own that fills in `calibration_file`, and `output_directory`
+if saves should land somewhere other than beside it:
+
+```xml
+<include file="$(find-pkg-share interactive_poser)/launch/calibrate.launch.xml">
+  <arg name="calibration_file"
+       value="$(find-pkg-share my_cell_config)/config/default_calibration.yaml"/>
+</include>
+```
+
 If the node reports a joint reading differently from the file, the cell was
 launched without the `calibration_file` argument. Fix that before measuring
 anything, or you will record an offset against the wrong baseline.
