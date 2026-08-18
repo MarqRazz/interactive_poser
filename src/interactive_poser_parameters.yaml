@@ -1,0 +1,179 @@
+interactive_poser:
+  calibration_file:
+    type: string
+    default_value: ""
+    read_only: true
+    description: >
+      The one file the user points at. Lists every calibratable joint under
+      calibration.joints, each with its offset from nominal and, for a joint
+      that carries a sensor, the topics to relay. The same file is loaded by the
+      URDF, so the tool can never offer a target the description does not apply.
+    validation:
+      not_empty<>: []
+
+  target_calibration_joint:
+    type: string
+    default_value: ""
+    description: >
+      Which joint from the file is being calibrated. Empty selects the first.
+      Switchable at runtime, but the marker's right-click menu is the easier
+      route: rqt_reconfigure has no enum editor, so this renders as a text box.
+
+  timestamp_output:
+    type: bool
+    default_value: true
+    description: >
+      Save to <stem>_<UTC timestamp>.yaml beside the input rather than over it,
+      so a session can never destroy a file already in the workspace. Promoting
+      a result is then a deliberate copy over the cell's own file. Set false to
+      write the input path in place.
+
+  output_directory:
+    type: string
+    default_value: ""
+    description: "Where timestamped saves land. Empty means beside the input file."
+
+  shadow_suffix:
+    type: string
+    default_value: "_cal"
+    read_only: true
+    description: "Appended to mirrored frame names. The real TF tree is never modified."
+    validation:
+      not_empty<>: []
+
+  auto_capture:
+    type: bool
+    default_value: true
+    description: >
+      Snapshot the first message on each relay automatically, so the display is
+      populated without the operator having to find the capture menu entry.
+
+  live_relay:
+    type: bool
+    default_value: false
+    description: >
+      Republish every incoming message as it arrives instead of holding a frozen
+      snapshot. Use it when the scene itself is changing, such as driving an arm
+      into view. Costs the sensor's full bandwidth, so it is decimated by
+      stream_decimation. Switching back off freezes the current frame at full
+      resolution.
+
+  stream_decimation:
+    type: int
+    default_value: 16
+    description: >
+      Keep every Nth point of any continuously streamed cloud: the preview sent
+      while the offset is being dragged, and every frame in live_relay. Trades
+      detail for bandwidth, which matters because tracking the marker means
+      resending the cloud. The full cloud returns once the offset settles. 1
+      streams everything. Applies at once in both modes, and compounds with
+      snapshot_decimation when that is not 1.
+    validation:
+      bounds<>: [1, 64]
+
+  snapshot_decimation:
+    type: int
+    default_value: 1
+    description: >
+      Keep every Nth point of the captured snapshot. 1 keeps all. Read at
+      capture time, so changing it leaves the current frozen frame alone and
+      takes effect on the next capture.
+    validation:
+      bounds<>: [1, 64]
+
+  ghost_alpha:
+    type: double
+    default_value: 0.55
+    description: >
+      Opacity of the ghost: the target's own visual meshes drawn in the shadow
+      frame, and the only feedback a target with no sensor has. 0 hides it.
+      Separate from ghost_color because rqt_reconfigure gives a scalar a slider
+      and an array a text box, and this is the one worth scrubbing.
+    validation:
+      bounds<>: [0.0, 1.0]
+
+  ghost_color:
+    type: double_array
+    default_value: [0.95, 0.55, 0.15]
+    description: >
+      Ghost RGB, 0-1, applied live. Pick something absent from the scene.
+    validation:
+      fixed_size<>: [3]
+      element_bounds<>: [0.0, 1.0]
+
+  image_refresh_period:
+    type: double
+    default_value: 2.0
+    description: >
+      Seconds between re-sends of the frozen image, which keeps RViz's Camera
+      display from stalling on an image it received before any CameraInfo. 0
+      disables it. Ignored while live_relay is on.
+    validation:
+      bounds<>: [0.0, 30.0]
+
+  settle_time:
+    type: double
+    default_value: 0.3
+    description: >
+      Seconds of quiet after the last offset change before the full-resolution
+      cloud is resent. Covers both a marker drag and an rqt slider, neither of
+      which announces that it has finished.
+    validation:
+      bounds<>: [0.05, 5.0]
+
+  marker_scale:
+    type: double
+    default_value: 0.15
+    read_only: true
+    description: "Interactive marker size in metres. Suit it to the thing being posed."
+    validation:
+      bounds<>: [0.01, 2.0]
+
+  startup_timeout:
+    type: double
+    default_value: 15.0
+    read_only: true
+    description: "Seconds to wait for /robot_description and for the target's transform."
+    validation:
+      bounds<>: [1.0, 120.0]
+
+  # Live offset from nominal, in human units. Bounds double as the sanity
+  # threshold, so the tool structurally cannot emit an absurd offset. Values are
+  # quantised to two decimals; see docs/design.md, Keeping one number.
+  offset:
+    x_mm:
+      type: double
+      default_value: 0.0
+      description: "As-built offset from nominal along parent X, millimetres."
+      validation:
+        bounds<>: [-1000.0, 1000.0]
+    y_mm:
+      type: double
+      default_value: 0.0
+      description: "As-built offset from nominal along parent Y, millimetres."
+      validation:
+        bounds<>: [-1000.0, 1000.0]
+    z_mm:
+      type: double
+      default_value: 0.0
+      description: "As-built offset from nominal along parent Z, millimetres."
+      validation:
+        bounds<>: [-1000.0, 1000.0]
+    roll_deg:
+      type: double
+      default_value: 0.0
+      description: "As-built rotation about parent X, degrees."
+      validation:
+        bounds<>: [-15.0, 15.0]
+    pitch_deg:
+      type: double
+      default_value: 0.0
+      description: "As-built rotation about parent Y, degrees."
+      validation:
+        bounds<>: [-15.0, 15.0]
+    yaw_deg:
+      type: double
+      default_value: 0.0
+      description: "As-built rotation about parent Z, degrees."
+      validation:
+        bounds<>: [-15.0, 15.0]

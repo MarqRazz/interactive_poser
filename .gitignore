@@ -1,0 +1,4 @@
+# Local dev container. Not shipped: this package is pulled into a workspace that
+# already has a robot description, so a compose file that mounts a cell into
+# *this* repo has the dependency backwards.
+/docker/
