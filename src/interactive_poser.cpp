@@ -270,7 +270,30 @@ bool InteractivePoser::loadTargets(std::string & error)
   }
 
   if (targets_.empty()) {
-    error = "no usable calibration targets in " + path.string();
+    // Reaching here almost always means the file is not this cell's. Say so,
+    // and name the joints the description actually offers, rather than leaving
+    // the operator to guess what a usable file would contain.
+    std::vector<std::string> candidates;
+    for (const auto & kv : model.joints_) {
+      if (kv.second && kv.second->type == urdf::Joint::FIXED &&
+          fromUrdf(kv.second->parent_to_joint_origin_transform).getOrigin().length() < 1e-9)
+      {
+        candidates.push_back(kv.first);
+      }
+    }
+    std::sort(candidates.begin(), candidates.end());
+    std::string hint;
+    for (std::size_t i = 0; i < candidates.size() && i < 12; ++i) {
+      hint += "\n    " + candidates[i];
+    }
+    error = "None of the joints in " + path.string() +
+            " exist in /robot_description as calibratable fixed joints, so there is nothing to "
+            "calibrate.\n  Point calibration_file at your cell's own file. The one shipped with "
+            "this package is a placeholder with invented joint names.\n  Fixed joints in this "
+            "description that already sit at identity, and so are ready to calibrate:" +
+            (hint.empty() ? std::string("\n    (none)") : hint) +
+            (candidates.size() > 12 ? "\n    ... and " + std::to_string(candidates.size() - 12) +
+                                        " more" : "");
     return false;
   }
   RCLCPP_INFO(node_->get_logger(), "%zu calibratable joint(s):", targets_.size());
