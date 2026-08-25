@@ -2,20 +2,33 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>interactive_poser</name>
-  <version>0.0.1</version>
-  <description>Interactive Marker tool to help with pose estimation</description>
+  <version>0.1.0</version>
+  <description>
+    Measure the as-built pose of a fixed joint by hand, in RViz, against live
+    sensor data. Relays a sensor snapshot into a movable shadow frame so a human
+    can align it with the model, then writes the offset from nominal to a
+    calibration file the URDF loads.
+  </description>
   <maintainer email="marq.razz@gmail.com">marq</maintainer>
   <license>BSD</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>generate_parameter_library</buildtool_depend>
 
   <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
   <depend>tf2</depend>
-  <depend>tf2_eigen</depend>
   <depend>tf2_geometry_msgs</depend>
   <depend>tf2_ros</depend>
   <depend>interactive_markers</depend>
+  <depend>visualization_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>std_msgs</depend>
+  <depend>urdf</depend>
   <depend>yaml-cpp</depend>
+
+  <exec_depend>rviz2</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

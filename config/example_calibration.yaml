@@ -1,0 +1,55 @@
+# As-built calibration. One file, two readers: the URDF applies the offsets and
+# interactive_poser takes its target list from the same place.
+#
+# Copy this, replace the joint names with your cell's, and point both the URDF
+# and the tool at your copy.
+#
+# What the values mean and where zero error sits: see the package README.
+# Loading them into a description: see docs/xacro-integration.md.
+calibration:
+  joints:
+    # A sensor. Its own data is what moves against the unmoved model.
+    front_camera_mount_joint:
+      cloud_topics: [/front_camera/depth_registered/points]
+      image_topic: /front_camera/color/image_raw
+      camera_info_topic: /front_camera/color/camera_info
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      roll: 0.0
+      pitch: 0.0
+      yaw: 0.0
+
+    rear_camera_mount_joint:
+      cloud_topics: [/rear_camera/depth_registered/points]
+      image_topic: /rear_camera/color/image_raw
+      camera_info_topic: /rear_camera/color/camera_info
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      roll: 0.0
+      pitch: 0.0
+      yaw: 0.0
+
+    # A fixture. No sensor rides on it, so the ghost is its only feedback and it
+    # has to be aligned against an already-calibrated camera.
+    fixture_base_mount_joint:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      roll: 0.0
+      pitch: 0.0
+      yaw: 0.0
+
+    # A joint carrying its own layout geometry instead of sitting at a mount
+    # link. `nominal` marks zero error; x/y/z/rpy stay the absolute origin the
+    # xacro applies. Composition is absolute = nominal * offset.
+    #
+    # legacy_fixture_joint:
+    #   nominal: {x: 0.0, y: 0.65, z: 0.0, roll: 0.0, pitch: 0.0, yaw: -1.5707963}
+    #   x: 0.0
+    #   y: 0.65
+    #   z: 0.0
+    #   roll: 0.0
+    #   pitch: 0.0
+    #   yaw: -1.5707963

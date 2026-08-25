@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<!-- Run the poser against a cell's calibration file.
+
+     Bring the cell up first, passing it the same file, so the description and
+     the tool agree about where things are. This attaches to a running system
+     rather than launching one, so it can be restarted freely while you work.
+
+     A cell package is a better place to wire this up than the command line: see
+     the README, "Running it".  -->
+<launch>
+  <arg name="calibration_file"
+       default="$(find-pkg-share interactive_poser)/config/example_calibration.yaml"
+       description="Joints to offer, and where the offsets are read and written."/>
+  <arg name="output_directory" default=""
+       description="Where timestamped saves land. Empty means beside the input file."/>
+  <arg name="target" default=""
+       description="Joint to start on. Empty selects the first in the file."/>
+  <arg name="marker_scale" default="0.25"
+       description="Interactive marker size in metres. Suit it to the thing being posed."/>
+  <arg name="use_sim_time" default="true"
+       description="True against a simulator or a bag; false on real hardware."/>
+  <arg name="rviz" default="true"
+       description="Start RViz preconfigured for calibration. Set false if you already have one."/>
+
+  <node pkg="interactive_poser" exec="interactive_poser_node"
+        name="interactive_poser" output="screen">
+    <param name="calibration_file" value="$(var calibration_file)"/>
+    <param name="output_directory" value="$(var output_directory)"/>
+    <param name="target_calibration_joint" value="$(var target)"/>
+    <param name="marker_scale" value="$(var marker_scale)"/>
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <!-- The node name is the interactive-marker namespace, so a renamed node
+       needs calibration.rviz updated to match. -->
+  <group if="$(var rviz)">
+    <node pkg="rviz2" exec="rviz2" name="calibration_rviz" output="screen"
+          args="-d $(find-pkg-share interactive_poser)/config/calibration.rviz">
+      <param name="use_sim_time" value="$(var use_sim_time)"/>
+    </node>
+  </group>
+</launch>

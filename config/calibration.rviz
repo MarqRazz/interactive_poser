@@ -1,0 +1,195 @@
+# Displays for interactive_poser. Every topic here is one of the tool's fixed
+# outputs, so this config works against any cell and survives a target switch.
+#
+# RViz rewrites this file if you save from the GUI, which also strips these
+# comments and bakes in the current cell's link and frame lists. Save a copy
+# instead if you want to keep your layout.
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /ShadowCloud1
+        - /Marker1
+      Splitter Ratio: 0.5
+    Tree Height: 640
+Visualization Manager:
+  Class: ""
+  Name: root
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+      Cell Size: 0.5
+      Plane Cell Count: 12
+      Color: 160; 160; 164
+      Alpha: 0.3
+      Reference Frame: <Fixed Frame>
+      Value: true
+
+    # The reference: the cell exactly as the URDF describes it. This is what the
+    # displaced sensor data has to be brought back onto.
+    - Class: rviz_default_plugins/RobotModel
+      Enabled: true
+      Name: Model (nominal)
+      Description Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Alpha: 1
+      Visual Enabled: true
+      Collision Enabled: false
+      Value: true
+
+    # The posed sensor data. Captured automatically from the first message, so
+    # it appears without you having to trigger anything.
+    - Class: rviz_default_plugins/PointCloud2
+      Enabled: true
+      Name: ShadowCloud
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /interactive_poser/snapshot
+      Alpha: 1
+      Axis: Z
+      Color: 255; 255; 255
+      Color Transformer: RGB8
+      Decay Time: 0
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.004
+      Style: Flat Squares
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+
+    # The target's own meshes in the shadow frame. For a fixture this is the
+    # only thing that moves with the marker, because nothing is mounted on it to
+    # relay. The markers are frame_locked, so RViz re-transforms them every
+    # cycle and they track the handle with nothing republished.
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Ghost (target geometry)
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /interactive_poser/ghost
+      Namespaces:
+        ghost: true
+      Value: true
+
+    # The sharpest cue for rotation: the colour image with the model drawn over
+    # it from the POSED camera pose. Mesh silhouettes against real edges resolve
+    # angle better than a point cloud. Camera derives its info topic from the
+    # image's parent namespace, which is why the node publishes ~/image and
+    # ~/camera_info rather than any other pair of names.
+    - Class: rviz_default_plugins/Camera
+      Enabled: true
+      Name: CameraOverlay
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /interactive_poser/image
+      Image Rendering: background and overlay
+      Overlay Alpha: 0.6
+      Zoom Factor: 1
+      Far Plane Distance: 100
+      Value: true
+      Visibility:
+        Grid: false
+        Frames: false
+        Marker: false
+        ShadowCloud: false
+        "Ghost (target geometry)": true
+        "Model (nominal)": true
+
+    # The handle. The namespace is the poser node's name, so a renamed node
+    # needs this updated to match.
+    - Class: rviz_default_plugins/InteractiveMarkers
+      Enabled: true
+      Name: Marker
+      Interactive Markers Namespace: /interactive_poser
+      Show Axes: true
+      Show Descriptions: true
+      Show Visual Aids: true
+      Value: true
+
+    # Off by default: switch on the target's mount link and its `_cal` shadow to
+    # read the build error straight off the screen as the gap between them.
+    - Class: rviz_default_plugins/TF
+      Enabled: false
+      Name: Frames
+      Frame Timeout: 15
+      Marker Scale: 0.25
+      Show Arrows: false
+      Show Axes: true
+      Show Names: true
+      Update Interval: 0
+      Filter (blacklist): ""
+      Filter (whitelist): ""
+      Frames:
+        All Enabled: false
+      Tree:
+        {}
+      Value: false
+
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: world
+    Frame Rate: 30
+  Name: root
+  Tools:
+    # MoveCamera first, so it is the tool selected on load. With Interact
+    # default, one stray click on the marker's 3D handle drags it in the camera
+    # plane and silently becomes your calibration. Switch to Interact
+    # deliberately, and use Revert if you nudge it.
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Interact
+      Hide Inactive Objects: true
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+      Line color: 128; 128; 0
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Distance: 3.2
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0.6
+      Pitch: 0.45
+      Yaw: 2.2
+      Near Clip Distance: 0.01
+      Target Frame: <Fixed Frame>
+      Value: Orbit (rviz_default_plugins)
+    Saved: ~
+Window Geometry:
+  Displays:
+    collapsed: false
+  CameraOverlay:
+    collapsed: false
+  Height: 900
+  Width: 1500
+  Hide Left Dock: false
+  Hide Right Dock: true
+  QMainWindow State: ""
