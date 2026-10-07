@@ -47,11 +47,6 @@ add_library(interactive_poser_lib SHARED src/interactive_poser.cpp)
 target_include_directories(interactive_poser_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-# ament_target_dependencies() is gone from Lyrical's ament_cmake. Link against
-# each dependency's own exported targets instead: every ament_cmake package
-# already fills in <pkg>_TARGETS (via ament_cmake_export_targets) with the
-# exact target(s) its Config.cmake exports, so this needs no per-package
-# guessing and no compat macro.
 target_link_libraries(interactive_poser_lib
   ${rclcpp_TARGETS}
   ${sensor_msgs_TARGETS}
