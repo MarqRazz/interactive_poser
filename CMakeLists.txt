@@ -47,15 +47,29 @@ add_library(interactive_poser_lib SHARED src/interactive_poser.cpp)
 target_include_directories(interactive_poser_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(interactive_poser_lib ${THIS_PACKAGE_INCLUDE_DEPENDS})
+# ament_target_dependencies() is gone from Lyrical's ament_cmake. Link against
+# each dependency's own exported targets instead: every ament_cmake package
+# already fills in <pkg>_TARGETS (via ament_cmake_export_targets) with the
+# exact target(s) its Config.cmake exports, so this needs no per-package
+# guessing and no compat macro.
 target_link_libraries(interactive_poser_lib
+  ${rclcpp_TARGETS}
+  ${sensor_msgs_TARGETS}
+  ${geometry_msgs_TARGETS}
+  ${tf2_TARGETS}
+  ${tf2_geometry_msgs_TARGETS}
+  ${tf2_ros_TARGETS}
+  ${interactive_markers_TARGETS}
+  ${visualization_msgs_TARGETS}
+  ${std_srvs_TARGETS}
+  ${std_msgs_TARGETS}
+  ${urdf_TARGETS}
   interactive_poser_parameters
   ${YAML_CPP_LIBRARIES}
 )
 
 add_executable(interactive_poser_node src/interactive_poser_node.cpp)
 target_link_libraries(interactive_poser_node interactive_poser_lib)
-ament_target_dependencies(interactive_poser_node ${THIS_PACKAGE_INCLUDE_DEPENDS})
 
 install(DIRECTORY include/ DESTINATION include)
 install(
